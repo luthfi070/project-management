@@ -4,33 +4,41 @@ const userSchema = require("../model/userModel");
 const projectSchema = require("../model/projectModel");
 const { checkEmail } = require("../helper/authHelper");
 const { verifyToken } = require("../helper/authHelper");
+const { check } = require("express-validator");
 require("dotenv").config();
 
 //create project
-app.post("/", verifyToken, async (req, res, next) => {
-  try {
-    let payload = {
-      name: req.body.name,
-      description: req.body.description,
-      due_date: req.body.date,
-      user_id: req.body.iduser,
-    };
+app.post(
+  "/",
+  check("name").trim().escape(),
+  check("description").trim().escape(),
+  check("date").isDate(),
+  verifyToken,
+  async (req, res, next) => {
+    try {
+      let payload = {
+        name: req.body.name,
+        description: req.body.description,
+        due_date: req.body.date,
+        user_id: req.body.iduser,
+      };
 
-    let createProject = projectSchema.create(payload);
+      let createProject = projectSchema.create(payload);
 
-    if (createProject) {
-      res.status(201).json({
-        status: "success",
-        message: `Project ${payload.name} has been created!`,
-        statusCode: 201,
-      });
-    } else {
-      throw new Error(`Failed to create ${payload.name} Project!`);
+      if (createProject) {
+        res.status(201).json({
+          status: "success",
+          message: `Project ${payload.name} has been created!`,
+          statusCode: 201,
+        });
+      } else {
+        throw new Error(`Failed to create ${payload.name} Project!`);
+      }
+    } catch (err) {
+      next(err);
     }
-  } catch (err) {
-    next(err);
   }
-});
+);
 
 //get all project
 app.get("/", verifyToken, async (req, res, next) => {
@@ -78,36 +86,43 @@ app.get("/:id", verifyToken, async (req, res, next) => {
 });
 
 //update project by id
-app.put("/:id", verifyToken, async (req, res, next) => {
-  try {
-    let payload = {
-      name: req.body.name,
-      description: req.body.description,
-      due_date: req.body.date,
-      user_id: req.body.iduser,
-    };
-
-    let updateProject = await projectSchema.findOneAndUpdate(
-      {
-        _id: req.params["id"],
+app.put(
+  "/:id",
+  check("name").trim().escape(),
+  check("description").trim().escape(),
+  check("date").isDate(),
+  verifyToken,
+  async (req, res, next) => {
+    try {
+      let payload = {
+        name: req.body.name,
+        description: req.body.description,
+        due_date: req.body.date,
         user_id: req.body.iduser,
-      },
-      payload
-    );
+      };
 
-    if (updateProject) {
-      res.status(200).json({
-        status: "success",
-        message: `Successfully updated Project ${req.params["id"]}`,
-        statusCode: 200,
-      });
-    } else {
-      throw new Error(`Failed to update Project ${req.params["id"]}`);
+      let updateProject = await projectSchema.findOneAndUpdate(
+        {
+          _id: req.params["id"],
+          user_id: req.body.iduser,
+        },
+        payload
+      );
+
+      if (updateProject) {
+        res.status(200).json({
+          status: "success",
+          message: `Successfully updated Project ${req.params["id"]}`,
+          statusCode: 200,
+        });
+      } else {
+        throw new Error(`Failed to update Project ${req.params["id"]}`);
+      }
+    } catch (err) {
+      next(err);
     }
-  } catch (err) {
-    next(err);
   }
-});
+);
 
 //delete project by id
 app.delete("/:id", verifyToken, async (req, res, next) => {

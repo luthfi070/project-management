@@ -5,73 +5,86 @@ const bcrypt = require("bcrypt");
 const { checkEmail } = require("../helper/authHelper");
 const jwt = require("jsonwebtoken");
 const { verifyToken } = require("../helper/authHelper");
+const { check } = require("express-validator");
 require("dotenv").config();
 
 //Create User / Register
-app.post("/", checkEmail, async (req, res) => {
-  let payload = {
-    name: req.body.name,
-    email: req.body.email,
-    password: req.body.password,
-  };
+app.post(
+  "/",
+  check("name").trim().escape(),
+  check("email").isEmail().normalizeEmail(),
+  check("password").trim().escape(),
+  checkEmail,
+  async (req, res) => {
+    let payload = {
+      name: req.body.name,
+      email: req.body.email,
+      password: req.body.password,
+    };
 
-  let salt = await bcrypt.genSalt();
-  let encPass = await bcrypt.hash(payload.password, salt);
+    let salt = await bcrypt.genSalt();
+    let encPass = await bcrypt.hash(payload.password, salt);
 
-  payload.password = encPass;
+    payload.password = encPass;
 
-  await userSchema.create(payload);
+    await userSchema.create(payload);
 
-  res.status(201).json({
-    status: "success",
-    message: `User ${payload.email} has been created!`,
-    statusCode: 201,
-  });
-});
+    res.status(201).json({
+      status: "success",
+      message: `User ${payload.email} has been created!`,
+      statusCode: 201,
+    });
+  }
+);
 
 //Login
-app.post("/login", async (req, res) => {
-  let payload = {
-    email: req.body.email,
-    password: req.body.password,
-  };
+app.post(
+  "/login",
+  check("email").isEmail().normalizeEmail(),
+  check("password").trim().escape(),
+  async (req, res) => {
+    let payload = {
+      email: req.body.email.trim(),
+      password: req.body.password.trim(),
+    };
 
-  let checkEmail = await userSchema.findOne({
-    email: payload.email,
-  });
+    let checkEmail = await userSchema.findOne({
+      email: payload.email,
+    });
 
-  if (checkEmail) {
-    let checkPassword = bcrypt.compareSync(
-      payload.password,
-      checkEmail.password
-    );
+    if (checkEmail) {
+      let checkPassword = bcrypt.compareSync(
+        payload.password,
+        checkEmail.password
+      );
 
-    if (checkPassword) {
-      let token = jwt.sign({ checkEmail }, process.env.SECRET_KEY, {
-        expiresIn: "2h",
-      });
+      if (checkPassword) {
+        let token = jwt.sign({ checkEmail }, process.env.SECRET_KEY, {
+          expiresIn: "2h",
+        });
 
-      res.status(202).json({
-        status: "success",
-        message: `User ${payload.email} has been logged in!`,
-        token: token,
-        statusCode: 201,
-      });
+        res.status(202).json({
+          status: "success",
+          message: `User ${payload.email} has been logged in!`,
+          token: token,
+          statusCode: 201,
+        });
+      } else {
+        res.status(401).json({
+          status: "error",
+          message: `Your password is incorrect!`,
+          statusCode: 401,
+        });
+      }
     } else {
       res.status(401).json({
         status: "error",
-        message: `Your password is incorrect!`,
+        message: `User ${payload.email} is not exist!`,
         statusCode: 401,
       });
     }
-  } else {
-    res.status(401).json({
-      status: "error",
-      message: `User ${payload.email} is not exist!`,
-      statusCode: 401,
-    });
   }
-});
+);
 
 //Get All User
 app.get("/", verifyToken, async (req, res, next) => {
@@ -118,41 +131,48 @@ app.get("/:id", verifyToken, async (req, res, next) => {
 });
 
 //Update User By Id
-app.put("/:id", verifyToken, async (req, res, next) => {
-  try {
-    if (req.params["id"] !== req.body.iduser) {
-      throw new Error(`Oops you are not allowed to do that!`);
+app.put(
+  "/:id",
+  check("name").trim().escape(),
+  check("email").isEmail().normalizeEmail(),
+  check("password").trim().escape(),
+  verifyToken,
+  async (req, res, next) => {
+    try {
+      if (req.params["id"] !== req.body.iduser) {
+        throw new Error(`Oops you are not allowed to do that!`);
+      }
+
+      let payload = {
+        name: req.body.name,
+        email: req.body.email,
+        password: req.body.password,
+      };
+
+      let salt = await bcrypt.genSalt();
+      let encPass = await bcrypt.hash(payload.password, salt);
+
+      payload.password = encPass;
+
+      let updateUser = await userSchema.findByIdAndUpdate(
+        req.params["id"],
+        payload
+      );
+
+      if (updateUser) {
+        res.status(200).json({
+          status: "success",
+          message: `Successfully updated user ${req.params["id"]}`,
+          statusCode: 200,
+        });
+      } else {
+        throw new Error(`Failed to update user ${req.params["id"]}`);
+      }
+    } catch (err) {
+      next(err);
     }
-
-    let payload = {
-      name: req.body.name,
-      email: req.body.email,
-      password: req.body.password,
-    };
-
-    let salt = await bcrypt.genSalt();
-    let encPass = await bcrypt.hash(payload.password, salt);
-
-    payload.password = encPass;
-
-    let updateUser = await userSchema.findByIdAndUpdate(
-      req.params["id"],
-      payload
-    );
-
-    if (updateUser) {
-      res.status(200).json({
-        status: "success",
-        message: `Successfully updated user ${req.params["id"]}`,
-        statusCode: 200,
-      });
-    } else {
-      throw new Error(`Failed to update user ${req.params["id"]}`);
-    }
-  } catch (err) {
-    next(err);
   }
-});
+);
 
 //Delete User by Id
 app.delete("/:id", verifyToken, async (req, res, next) => {
