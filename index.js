@@ -9,7 +9,7 @@ app.use(express.urlencoded({ extended: true }));
 
 db.dbConnection();
 
-app.use("/", function (req, res) {
+app.get("/", function (req, res) {
   res.send("Welcome to Project Management");
 });
 app.use("/users", require("./user/userController"));
