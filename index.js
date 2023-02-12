@@ -9,6 +9,9 @@ app.use(express.urlencoded({ extended: true }));
 
 db.dbConnection();
 
+app.use("/", function (req, res) {
+  res.send("Welcome to Project Management");
+});
 app.use("/users", require("./user/userController"));
 app.use("/projects", require("./project/projectController"));
 app.use("/tasks", require("./task/taskController"));
