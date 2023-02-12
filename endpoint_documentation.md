@@ -2,6 +2,8 @@
 
 This API has a few Endpoint divided from 3 main routes, every endpoint has a different functionality, here is all available endpoint that can be used in this API 
 
+you can also view the postman version here https://documenter.getpostman.com/view/6730993/2s935uGLgS
+
 1. Users
    - Create New Users ( /users ) [ POST ]
 
